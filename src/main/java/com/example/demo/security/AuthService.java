@@ -10,11 +10,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.dto.LoginDto;
+import com.example.demo.dto.LoginResponseDto;
 import com.example.demo.dto.SignUpRequestDto;
 import com.example.demo.dto.UserDto;
 import com.example.demo.entity.User;
 import com.example.demo.enums.Role;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.service.SessionService;
+import com.example.demo.service.UserService;
 
 import java.util.Set;
 
@@ -27,6 +30,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JWTService jwtService;
+    private final SessionService sessionService;
+    private final UserService userService;
 
     public UserDto signUp(SignUpRequestDto signUpRequestDto) {
 
@@ -37,32 +42,32 @@ public class AuthService {
         }
 
         User newUser = modelMapper.map(signUpRequestDto, User.class);
-        newUser.setRoles(Set.of(Role.GUEST));
+        newUser.setRoles(Set.of(Role.ADMIN));
         newUser.setPassword(passwordEncoder.encode(signUpRequestDto.getPassword()));
         newUser = userRepository.save(newUser);
 
         return modelMapper.map(newUser, UserDto.class);
     }
 
-    public String[] login(LoginDto loginDto) {
-        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-                loginDto.getEmail(), loginDto.getPassword()
-        ));
+    public LoginResponseDto login(LoginDto loginDto) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginDto.getEmail(), loginDto.getPassword())
+        );
 
         User user = (User) authentication.getPrincipal();
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+        sessionService.generateNewSession(user, refreshToken);
 
-        String[] arr = new String[2];
-        arr[0] = jwtService.generateAccessToken(user);
-        arr[1] = jwtService.generateRefreshToken(user);
-
-        return arr;
+        return new LoginResponseDto(user.getId(), accessToken, refreshToken);
     }
 
-    public String refreshToken(String refreshToken) {
-        Long id = jwtService.getUserIdFromToken(refreshToken);
+    public LoginResponseDto refreshToken(String refreshToken) {
+        Long userId = jwtService.getUserIdFromToken(refreshToken);
+        sessionService.validateSession(refreshToken);
+        User user = userService.getUserById(userId);
 
-        User user = userRepository.findById(id).orElseThrow();
-        return jwtService.generateAccessToken(user);
+        String accessToken = jwtService.generateAccessToken(user);
+        return new LoginResponseDto(user.getId(), accessToken, refreshToken);
     }
-
 }
