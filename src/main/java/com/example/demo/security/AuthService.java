@@ -33,16 +33,51 @@ public class AuthService {
     private final SessionService sessionService;
     private final UserService userService;
 
-    public UserDto signUp(SignUpRequestDto signUpRequestDto) {
+    // public UserDto signUp(SignUpRequestDto signUpRequestDto) {
 
-        User user = userRepository.findByEmail(signUpRequestDto.getEmail()).orElse(null);
+    // User user =
+    // userRepository.findByEmail(signUpRequestDto.getEmail()).orElse(null);
+
+    // if (user != null) {
+    // throw new RuntimeException("User is already present with same email id");
+    // }
+
+    // User newUser = modelMapper.map(signUpRequestDto, User.class);
+    // newUser.setRoles(Set.of(Role.ADMIN));
+    // newUser.setPassword(passwordEncoder.encode(signUpRequestDto.getPassword()));
+    // newUser = userRepository.save(newUser);
+
+    // return modelMapper.map(newUser, UserDto.class);
+    // }
+    public UserDto signUp(SignUpRequestDto signUpRequestDto) {
+        User user = userRepository.findByEmail(signUpRequestDto.getEmail());
 
         if (user != null) {
             throw new RuntimeException("User is already present with same email id");
         }
 
+        // Map DTO to User entity, excluding roles initially
         User newUser = modelMapper.map(signUpRequestDto, User.class);
-        newUser.setRoles(Set.of(Role.ADMIN));
+
+        // // Manually set the roles as a Set<Role>
+        // try {
+        // Role role = Role.valueOf(signUpRequestDto.getRole().toUpperCase());
+        // // Validate that the role is either INSTRUCTOR or STUDENT
+
+        // if (role == Role.INSTRUCTOR) {
+        // newUser.setRoles(Set.of(Role.ADMIN));
+        // }
+        // if (role == Role.STUDENT) {
+        // newUser.setRoles(Set.of(Role.STUDENT));
+        // }
+
+        // // newUser.setRoles(Set.of(role)); // Set as a single-element Set
+        // } catch (IllegalArgumentException e) {
+        // throw new RuntimeException("Invalid role specified: " +
+        // signUpRequestDto.getRole());
+        // }
+
+        // Encode password and save
         newUser.setPassword(passwordEncoder.encode(signUpRequestDto.getPassword()));
         newUser = userRepository.save(newUser);
 
@@ -51,8 +86,7 @@ public class AuthService {
 
     public LoginResponseDto login(LoginDto loginDto) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginDto.getEmail(), loginDto.getPassword())
-        );
+                new UsernamePasswordAuthenticationToken(loginDto.getEmail(), loginDto.getPassword()));
 
         User user = (User) authentication.getPrincipal();
         String accessToken = jwtService.generateAccessToken(user);

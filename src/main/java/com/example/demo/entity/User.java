@@ -33,17 +33,17 @@ public class User implements UserDetails {
 
     private String name;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @Column
+    private String phoneNumber; // Added phone number
+
     @Enumerated(EnumType.STRING)
-    private Set<Role> roles;
+    @Column(nullable = false)
+    private Role role;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_"+role.name()))
-                .collect(Collectors.toSet());
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name())); // Return a single role
     }
-
     @Override
     public String getUsername() {
         return email;
@@ -51,8 +51,10 @@ public class User implements UserDetails {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof User user)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof User user))
+            return false;
         return Objects.equals(getId(), user.getId());
     }
 
